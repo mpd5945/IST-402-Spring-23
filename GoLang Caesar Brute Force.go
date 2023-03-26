@@ -16,7 +16,7 @@ func shiftChar(ch rune, shift int) rune {
 }
 
 func bruteForce(cipherText string) {
-	for i := 1; i <= 99; i++ { // we try all possible shift values from 1 to 25
+	for i := 1; i <= 99; i++ { 
 		var plainText strings.Builder
 		for _, ch := range cipherText {
 			plainText.WriteRune(shiftChar(ch, i))
