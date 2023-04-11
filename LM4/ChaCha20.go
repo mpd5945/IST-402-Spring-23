@@ -1,40 +1,64 @@
 package main
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"fmt"
-	"os"
+	"io"
 
 	"golang.org/x/crypto/chacha20"
 )
 
 func main() {
-	// User input for plaintext and key
-	fmt.Print("Enter plaintext: ")
+	// Generate a random 256-bit key
+	key := make([]byte, 32)
+	if _, err := io.ReadFull(rand.Reader, key); err != nil {
+		fmt.Println("Failed to generate random key:", err)
+		return
+	}
+
+	// Get user input for plaintext
 	var plaintext string
+	fmt.Print("Enter plaintext: ")
 	fmt.Scanln(&plaintext)
 
-	fmt.Print("Enter key (32 bytes): ")
-	var key [32]byte
-	os.Stdin.Read(key[:])
+	// Convert plaintext to byte slice
+	plaintextBytes := []byte(plaintext)
 
-	// Create a new ChaCha20 cipher
+	// Generate a random 96-bit nonce
 	nonce := make([]byte, chacha20.NonceSizeX)
-	c, err := chacha20.NewUnauthenticatedCipher(key[:], nonce)
-	if err != nil {
-		panic(err)
+	if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
+		fmt.Println("Failed to generate random nonce:", err)
+		return
 	}
 
-	// Encrypt plaintext
-	ciphertext := make([]byte, len(plaintext))
-	c.XORKeyStream(ciphertext, []byte(plaintext))
-	fmt.Printf("Ciphertext: %x\n", ciphertext)
-
-	// Decrypt ciphertext
-	c, err = chacha20.NewUnauthenticatedCipher(key[:], nonce) // Recreate the cipher with the same key and nonce
+	// Create a new ChaCha20 cipher with the random key and nonce
+	c, err := chacha20.NewUnauthenticatedCipher(key, nonce)
 	if err != nil {
-		panic(err)
+		fmt.Println("Failed to create ChaCha20 cipher:", err)
+		return
 	}
-	plaintextBytes := []byte(plaintext) // Convert plaintext to bytes
-	c.XORKeyStream(plaintextBytes, ciphertext) // Decrypt directly into plaintext buffer
-	fmt.Printf("Decrypted: %s\n", plaintextBytes)
+
+	// Encrypt the plaintext
+	ciphertext := make([]byte, len(plaintextBytes))
+	c.XORKeyStream(ciphertext, plaintextBytes)
+
+	// Encode the key and ciphertext as hexadecimal strings
+	keyHex := hex.EncodeToString(key)
+	ciphertextHex := hex.EncodeToString(ciphertext)
+	fmt.Println("Key (hex):", keyHex)
+	fmt.Println("Ciphertext (hex):", ciphertextHex)
+
+	// Create a new cipher instance for decryption
+	decryptionCipher, err := chacha20.NewUnauthenticatedCipher(key, nonce)
+	if err != nil {
+		fmt.Println("Failed to create decryption cipher:", err)
+		return
+	}
+
+	// Decrypt the ciphertext
+	decrypted := make([]byte, len(ciphertext))
+	decryptionCipher.XORKeyStream(decrypted, ciphertext)
+
+	fmt.Println("Decrypted:", string(decrypted))
 }
