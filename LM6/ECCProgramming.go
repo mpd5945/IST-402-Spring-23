@@ -1,117 +1,69 @@
 package main
 
 import (
-    "crypto/ecdsa"
-    "crypto/elliptic"
-    "crypto/rand"
-    "encoding/hex"
-    "fmt"
+	"bufio"
+	"crypto/aes"
+	"crypto/cipher"
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
+	"encoding/hex"
+	"fmt"
+	"io"
+	"os"
+	"strings"
 )
 
 func main() {
-    // Generate a private key
-    privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-    if err != nil {
-        fmt.Println(err)
-        return
-    }
+	curve := elliptic.P256()
+	privateKey, err := ecdsa.GenerateKey(curve, rand.Reader)
 
-    // Get the public key
-    publicKey := &privateKey.PublicKey
+	if err != nil {
+		panic(err)
+	}
+	publicKey := &privateKey.PublicKey
 
-    // Get the user input
-    userInput := "Hello, World!"
+	reader := bufio.NewReader(os.Stdin)
+	fmt.Print("Enter a string to encrypt: ")
+	input, err := reader.ReadString('\n')
 
-    // Convert the user input to bytes
-    inputBytes := []byte(userInput)
+	if err != nil {
+		panic(err)
+	}
 
-    // Encrypt the user input
-    encryptedBytes, sharedSecret, err := encrypt(inputBytes, publicKey)
-    if err != nil {
-        fmt.Println(err)
-        return
-    }
+	input = strings.TrimSpace(input)
+	message := []byte(input)
 
-    // Convert the encrypted bytes to a hex string
-    encryptedHex := hex.EncodeToString(encryptedBytes)
+	nonce := make([]byte, 12)
 
-    fmt.Println("Encrypted:", encryptedHex)
+	if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
+		panic(err)
+	}
 
-    // Decrypt the encrypted bytes
-    decryptedBytes, err := decrypt(encryptedBytes, privateKey, sharedSecret)
-    if err != nil {
-        fmt.Println(err)
-        return
-    }
+	sharedSecretX, _ := curve.ScalarMult(publicKey.X, publicKey.Y, privateKey.D.Bytes())
+	sharedSecret := sharedSecretX.Bytes()
+	block, err := aes.NewCipher(sharedSecret)
 
-    // Convert the decrypted bytes to a string
-    decryptedString := string(decryptedBytes)
+	if err != nil {
+		panic(err)
+	}
 
-    fmt.Println("Decrypted:", decryptedString)
-}
+	aesGcm, err := cipher.NewGCMWithNonceSize(block, 12)
 
-func encrypt(input []byte, publicKey *ecdsa.PublicKey) ([]byte, []byte, error) {
-    // Generate a random number
-    k, err := rand.Int(rand.Reader, publicKey.Params().N)
-    if err != nil {
-        return nil, nil, err
-    }
+	if err != nil {
+		panic(err)
+	}
 
-    // Calculate the x and y coordinates of the point k*G
-    x, y := publicKey.Curve.ScalarBaseMult(k.Bytes())
+	ciphertext := aesGcm.Seal(nil, nonce, message, nil)
 
-    // Calculate the shared secret
-    sharedSecretX, _ := publicKey.Curve.ScalarMult(x, y, k.Bytes())
-    sharedSecret := sharedSecretX.Bytes()
+	hexCiphertext := hex.EncodeToString(ciphertext)
+	fmt.Printf("Encrypted message: %s\n", hexCiphertext)
 
-    // Generate a random number for the nonce
-    nonce, err := rand.Int(rand.Reader, publicKey.Params().N)
-    if err != nil {
-        return nil, nil, err
-    }
+	plaintext, err := aesGcm.Open(nil, nonce, ciphertext, nil)
 
-    // Calculate the x and y coordinates of the point nonce*G
-    x, y = publicKey.Curve.ScalarBaseMult(nonce.Bytes())
-
-    // Calculate the ciphertext
-    ciphertextX, ciphertextY := publicKey.Curve.ScalarMult(x, y, publicKey.Params().Gx, publicKey.Params().Gy)
-    x, y = publicKey.Curve.ScalarMult(x, y, sharedSecret)
-    ciphertextX, ciphertextY = publicKey.Curve.Add(ciphertextX, ciphertextY, x, y)
-    ciphertext := make([]byte, 2*publicKey.Params().BitSize/8)
-    copy(ciphertext[:], ciphertextX.Bytes())
-    copy(ciphertext[publicKey.Params().BitSize/8:], ciphertextY.Bytes())
-
-    // Calculate the tag
-    tagX, tagY := publicKey.Curve.ScalarBaseMult(nonce.Bytes())
-    tagX, tagY = publicKey.Curve.ScalarMult(tagX, tagY, sharedSecret)
-    tag := make([]byte, 2*publicKey.Params().BitSize/8)
-    copy(tag[:], tagX.Bytes())
-    copy(tag[publicKey.Params().BitSize/8:], tagY.Bytes())
-
-    // Concatenate the ciphertext and tag
-    output := make([]byte, len(ciphertext)+len(tag))
-    copy(output, ciphertext)
-    copy(output[len(ciphertext):], tag)
-
-    return output, sharedSecret, nil
-}
-
-func decrypt(input []byte, privateKey *ecdsa.PrivateKey, sharedSecret []byte) ([]byte, error) {
-    // Split the input into the ciphertext and tag
-    ciphertext := input[:len(input)/2]
-    tag := input[len(input)/2:]
-
-    // Calculate the x and y coordinates of the point nonce*G
-    x, y := privateKey.PublicKey.Curve.ScalarBaseMult(tag[:privateKey.PublicKey.Params().BitSize/8])
-    x2, y2 := privateKey.PublicKey.Curve.ScalarMult(tag[privateKey.PublicKey.Params().BitSize/8:], x, privateKey.D)
-    x, y = privateKey.PublicKey.Curve.Add(x, y, x2, y2)
-
-    // Calculate the x and y coordinates of the point ciphertext*sharedSecret
-    x, y = privateKey.PublicKey.Curve.ScalarMult(ciphertext[:privateKey.PublicKey.Params().BitSize/8], ciphertext[privateKey.PublicKey.Params().BitSize/8:], sharedSecret)
-
-    // Calculate the plaintext
-    plaintext := make([]byte, len(ciphertext)/2)
-    copy(plaintext, x.Bytes())
-
-    return plaintext, nil
+	if err != nil {
+		panic(err)
+	}
+    
+	fmt.Printf("Decrypted message: %s\n", plaintext)
 }
