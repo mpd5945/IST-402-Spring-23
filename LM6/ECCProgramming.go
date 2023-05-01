@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"crypto/aes"
 	"crypto/cipher"
-	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
 	"encoding/hex"
@@ -16,12 +15,12 @@ import (
 
 func main() {
 	curve := elliptic.P256()
-	privateKey, err := ecdsa.GenerateKey(curve, rand.Reader)
+	privateKey, x, y, err := elliptic.GenerateKey(curve, rand.Reader)
 
 	if err != nil {
 		panic(err)
 	}
-	publicKey := &privateKey.PublicKey
+	_ = elliptic.Marshal(curve, x, y)
 
 	reader := bufio.NewReader(os.Stdin)
 	fmt.Print("Enter a string to encrypt: ")
@@ -40,7 +39,7 @@ func main() {
 		panic(err)
 	}
 
-	sharedSecretX, _ := curve.ScalarMult(publicKey.X, publicKey.Y, privateKey.D.Bytes())
+	sharedSecretX, _ := curve.ScalarMult(x, y, privateKey)
 	sharedSecret := sharedSecretX.Bytes()
 	block, err := aes.NewCipher(sharedSecret)
 
@@ -64,6 +63,6 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-    
+
 	fmt.Printf("Decrypted message: %s\n", plaintext)
 }
