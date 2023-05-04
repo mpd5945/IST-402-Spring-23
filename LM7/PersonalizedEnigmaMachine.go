@@ -39,6 +39,10 @@ func main() {
 	ciphertext, _ := encryptECB(paddedPlaintext, key)
 	fmt.Printf("Encyption: \nEncrypted with AES-ECB: %x\n", ciphertext)
 
+	// Encrypt with AES-ECB again
+	ciphertext, _ = encryptECB(ciphertext, key)
+	fmt.Printf("Encrypted with AES-ECB (2nd time): %x\n", ciphertext)
+
 	// Encrypt with AES-OFB
 	ciphertext, _ = encryptOFB(ciphertext, key, iv)
 	fmt.Printf("Encrypted with AES-OFB: %x\n", ciphertext)
@@ -58,6 +62,10 @@ func main() {
 	// Decrypt with AES-ECB
 	decrypted, _ = decryptECB(decrypted, key)
 	fmt.Printf("Decrypted with AES-ECB: %x\n", decrypted)
+
+	// Decrypt with AES-ECB(2nd time)
+	decrypted, _ = decryptECB(decrypted, key)
+	fmt.Printf("Decrypted with AES-ECB (2nd time): %x\n", decrypted)
 
 	// Unpad the decrypted message
 	unpaddedDecrypted := pkcs7Unpad(decrypted, aes.BlockSize)
