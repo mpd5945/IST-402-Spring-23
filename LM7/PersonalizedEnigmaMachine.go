@@ -1,12 +1,12 @@
 package main
 
 import (
+	"bufio"
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
 	"fmt"
 	"io"
-	"bufio"
 	"os"
 	"strings"
 
@@ -14,7 +14,7 @@ import (
 )
 
 func main() {
-	fmt.Print("Enter plaintext: ")
+	fmt.Print("\nEnter plaintext: ")
 	reader := bufio.NewReader(os.Stdin)
 	userInput, _ := reader.ReadString('\n')
 	plaintext := []byte(strings.TrimSpace(userInput))
@@ -30,11 +30,11 @@ func main() {
 
 	// Padding plaintext for AES-ECB
 	paddedPlaintext := pkcs7Pad(plaintext, aes.BlockSize)
-	fmt.Printf("Padded message: %x\n", paddedPlaintext)
+	fmt.Printf("\nPadded message: %x\n\n", paddedPlaintext)
 
 	// Encrypt with AES-ECB
 	ciphertext, _ := encryptECB(paddedPlaintext, key)
-	fmt.Printf("Encrypted with AES-ECB: %x\n", ciphertext)
+	fmt.Printf("Encyption: \nEncrypted with AES-ECB: %x\n", ciphertext)
 
 	// Encrypt with AES-OFB
 	ciphertext, _ = encryptOFB(ciphertext, key, iv)
@@ -42,11 +42,11 @@ func main() {
 
 	// Encrypt with ChaCha20
 	ciphertext, _ = encryptChaCha20(ciphertext, keyChaCha20, nonce)
-	fmt.Printf("Encrypted with ChaCha20: %x\n", ciphertext)
+	fmt.Printf("Encrypted with ChaCha20: %x\n\n", ciphertext)
 
 	// Decrypt with ChaCha20
 	decrypted, _ := decryptChaCha20(ciphertext, keyChaCha20, nonce)
-	fmt.Printf("Decrypted with ChaCha20: %x\n", decrypted)
+	fmt.Printf("Decryption: \nDecrypted with ChaCha20: %x\n", decrypted)
 
 	// Decrypt with AES-OFB
 	decrypted, _ = decryptOFB(decrypted, key, iv)
@@ -58,7 +58,7 @@ func main() {
 
 	// Unpad the decrypted message
 	unpaddedDecrypted := pkcs7Unpad(decrypted, aes.BlockSize)
-	fmt.Printf("Unpadded decrypted message: %s\n", unpaddedDecrypted)
+	fmt.Printf("\nUnpadded decrypted message: %s\n", unpaddedDecrypted)
 }
 
 func encryptECB(plaintext, key []byte) ([]byte, error) {
