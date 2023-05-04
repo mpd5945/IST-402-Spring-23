@@ -51,6 +51,9 @@ func main() {
 	ciphertext, _ = encryptChaCha20(ciphertext, keyChaCha20, nonce)
 	fmt.Printf("Encrypted with ChaCha20: %x\n\n", ciphertext)
 
+	// Print the unpadded encrypted message
+	fmt.Printf("Unpadded encrypted message: %x\n\n", plaintext)
+
 	// Decrypt with ChaCha20
 	decrypted, _ := decryptChaCha20(ciphertext, keyChaCha20, nonce)
 	fmt.Printf("Decryption: \nDecrypted with ChaCha20: %x\n", decrypted)
