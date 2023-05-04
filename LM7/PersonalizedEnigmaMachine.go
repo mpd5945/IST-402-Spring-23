@@ -62,6 +62,10 @@ func main() {
 	decrypted, _ = decryptOFB(decrypted, key, iv)
 	fmt.Printf("Decrypted with AES-OFB: %x\n", decrypted)
 
+	//////// Decrypt with AES-OFB (2nd time)
+	//decrypted, _ = decryptOFB(decrypted, key, iv)
+	//fmt.Printf("Decrypted with AES-OFB (2nd time): %x\n", decrypted)
+
 	// Decrypt with AES-ECB
 	decrypted, _ = decryptECB(decrypted, key)
 	fmt.Printf("Decrypted with AES-ECB: %x\n", decrypted)
@@ -70,9 +74,12 @@ func main() {
 	decrypted, _ = decryptECB(decrypted, key)
 	fmt.Printf("Decrypted with AES-ECB (2nd time): %x\n", decrypted)
 
-	// Unpad the decrypted message
 	unpaddedDecrypted := pkcs7Unpad(decrypted, aes.BlockSize)
-	fmt.Printf("\nUnpadded decrypted message: %s\n", unpaddedDecrypted)
+	if unpaddedDecrypted != nil {
+		fmt.Printf("\nUnpadded decrypted message: %s\n", unpaddedDecrypted)
+	} else {
+		fmt.Println("\nWrong decryption method used. \nDecrypted message:", string(decrypted))
+	}
 }
 
 // Encrypt plaintext with AES-ECB
@@ -176,13 +183,12 @@ func pkcs7Pad(data []byte, blockSize int) []byte {
 
 // Unpad data with PKCS#7 padding
 func pkcs7Unpad(data []byte, blockSize int) []byte {
-
-	// Get the length of the data
 	length := len(data)
-
-	// Get the number of padding bytes
 	unpadding := int(data[length-1])
 
-	// Return the unpadded data
+	if unpadding < 1 || unpadding > blockSize {
+		return nil // or return an error depending on your use case
+	}
+
 	return data[:(length - unpadding)]
 }
